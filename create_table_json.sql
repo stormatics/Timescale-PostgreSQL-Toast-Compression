@@ -106,7 +106,7 @@ CREATE TABLE hit_uncompressed
     RefererHash BIGINT NOT NULL,
     URLHash BIGINT NOT NULL,
     CLID INTEGER NOT NULL,
-	payload jsonb NOT NULL
+	payload jsonb NOT NULL DEFAULT create_jsonb_random()
 );
 
 
@@ -254,7 +254,7 @@ CREATE TABLE hit_compressed_lz4
     RefererHash BIGINT NOT NULL,
     URLHash BIGINT NOT NULL,
     CLID INTEGER NOT NULL,
-	payload jsonb COMPRESSION LZ4 NOT NULL
+	payload jsonb COMPRESSION LZ4 NOT NULL create_jsonb_random()
 );
 
 ALTER TABLE hit_compressed_lz4 ALTER COLUMN FromTag SET STORAGE main;
@@ -398,7 +398,7 @@ CREATE TABLE hit_compressed_pglz
     RefererHash BIGINT NOT NULL,
     URLHash BIGINT NOT NULL,
     CLID INTEGER NOT NULL,
-	payload jsonb NOT NULL
+	payload jsonb NOT NULL create_jsonb_random()
 );
 
 ALTER TABLE hit_compressed_pglz ALTER COLUMN FromTag SET STORAGE main;
@@ -541,7 +541,7 @@ CREATE TABLE hit_hyper_compressed
     RefererHash BIGINT NOT NULL,
     URLHash BIGINT NOT NULL,
     CLID INTEGER NOT NULL,
-	payload jsonb COMPRESSION LZ4 NOT NULL
+	payload jsonb COMPRESSION LZ4 NOT NULL create_jsonb_random()
 );
 
 
