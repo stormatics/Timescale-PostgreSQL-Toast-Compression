@@ -548,6 +548,8 @@ CREATE TABLE hit_hyper_compressed
 SELECT create_hypertable('hit_hyper_compressed', 'eventtime', chunk_time_interval => INTERVAL '1 day');
 
 
+
+
 ALTER TABLE hit_hyper_compressed ALTER COLUMN FromTag SET STORAGE main;
 ALTER TABLE hit_hyper_compressed ALTER COLUMN UTMTerm SET STORAGE main;
 ALTER TABLE hit_hyper_compressed ALTER COLUMN UTMContent SET STORAGE main;
