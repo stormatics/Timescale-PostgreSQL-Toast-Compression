@@ -13,7 +13,7 @@ To load this dataset into your table, run the following command:
 
 ` psql -p 5432 -d postgres -t -c '\timing' -c "\\copy hit_uncompressed FROM 'hits.tsv'"`
 
-Following are the tables used:
+Following tables are used:
 
 **hit_uncompressed**: Regular postgreSQL heap table with toast strategy set to external. No compression is applied.
 
@@ -23,11 +23,11 @@ Following are the tables used:
 
 **hit_hyper_compressed**: Compressed hypertable with toast strategy set to main. This table has 22 compressed chunks and default_toast_compression algorithm is set to LZ4. 
 
-This test includes 5 files 
+Description
 
 **Create_table.sql** : Holds structure for all tables.
 
-**Create_table_json.sql** : Holds structure for all tables with additional **JSONB** column. To accomodate JSONB column, we created a random jsonb generator(**Check create_jsonb_random() inside helper_queries.sql**) function, set it as default for payload column and then, inserted dataset to tables.
+**Create_table_json.sql** : Holds structure for all tables with additional **JSONB** column. To accomodate JSONB column, we created a random jsonb generator(**Check create_jsonb_random() inside helper_queries.sql**) function, set it as default value for JSONB column and inserted dataset. 
 
 **hypertable_compression.sql** : Hypertable and compression settings for **hit_hyper_compressed** table 
 
