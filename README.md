@@ -17,7 +17,11 @@ This test includes 5 files
 **Sample_queries.sql** : Some sql queries to run on dataset(Untested)
 
 We fetched the analytical dataset from clickhouse using the following wget command:
-**wget --no-verbose --continue 'https://datasets.clickhouse.com/hits_compatible/hits.tsv.gz'
-**
+wget --no-verbose --continue 'https://datasets.clickhouse.com/hits_compatible/hits.tsv.gz'
+
+To load this dataset into your table, run the following command:
+
+sudo -p 5432 -u postgres psql test -t -c '\timing' -c "\\copy hits FROM 'hits.tsv'"
+
 
 To accomodate JSONB column, we created a random jsonb generator(Check helper_queries.sql) function and inserted above dataset to tables.
