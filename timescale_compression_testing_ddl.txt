@@ -141,86 +141,8 @@ ALTER TABLE hit_uncompressed ALTER COLUMN Params SET STORAGE external;
 ALTER TABLE hit_uncompressed ALTER COLUMN payload SET STORAGE external;
 
 
-create index idx_hit_uncompressed_eventtime on hit_uncompressed(eventtime DESC);
-CREATE INDEX idx_hit_uncompressed_regid  on hit_uncompressed (RegionID);
-CREATE INDEX idx_hit_uncompressed_cid on hit_uncompressed (counterid);
-CREATE INDEX idx_hit_uncompressed_refresh on hit_uncompressed (isrefresh, dontcounthits) where isrefresh <> 0 and dontcounthit <> 0;
-CREATE INDEX idx_hit_uncompressed_userid on hit_uncompressed (userid);
-CREATE INDEX idx_hit_uncompressed_regionuser on hit_uncompressed (RegionID,UserID);
-CREATE INDEX idx_hit_uncompressed_search2 on hit_uncompressed (searchphrase) WHERE searchphrase <> ''::text;
-CREATE INDEX idx_hit_uncompressed_trgm_idx_url ON hit_uncompressed USING gin (url gin_trgm_ops);
 
-
-Analyze hit_uncompressed;
-
-
-----
-Load dataset into hit table
-
-postgres@ip-172-31-76-243:~$ psql -c '\timing' -c "COPY hit_uncompressed from '/home/postgres/hits.tsv'"
-Timing is on.
-COPY 99997497
-Time: 2081240.739 ms (34:41.241)
-
-----
-
-Create proper indexes for running queries
-
-postgres@ip-172-31-76-243:~$ set maintenance_work_mem='4GB';
-SET
-
-
-
-
-
-SELECT
-    c1.relname,
-    pg_size_pretty(pg_relation_size(c1.relname::regclass)) AS table_size,
-pg_size_pretty(pg_indexes_size(c1.relname::regclass)) AS table_index_size,
-    c2.relname AS toast_relname,
-    pg_size_pretty(pg_relation_size(('pg_toast.' || c2.relname)::regclass)) AS toast_size,
-pg_size_pretty(pg_relation_size(('pg_toast.' || c2.relname || '_index')::regclass)) AS toast_index_size
-FROM
-    pg_class c1
-    JOIN pg_class c2 ON c1.reltoastrelid = c2.oid
-WHERE
-    c1.relname = 'hit_uncompressed'
-    AND c1.relkind = 'r';
-
-
-     relname      | table_size | table_index_size | toast_relname  | toast_size | toast_index_size
-------------------+------------+------------------+----------------+------------+------------------
- hit_uncompressed | 64 GB      | 15 GB            | pg_toast_16393 | 1945 MB    | 31 MB
-(1 row)
-
-
-
-Queries to run:
-
-1: SELECT UserID, extract(day FROM EventTime) AS m, SearchPhrase,URL, COUNT(*) FROM hits GROUP BY UserID, m, SearchPhrase,URL where eventtime >= '2013-07-24' and search_phrase <> '' and URL <> '' ORDER BY COUNT(*) DESC LIMIT 10;
-
-check hourly webpage view counts 
-
-2: SELECT
-  EXTRACT(hour from eventtime) as hours,
-  COUNT(*) as PageViews
-FROM hit
-WHERE eventtime > '2013-07-31 00:00:00' 
-GROUP BY hours;
-
-3: SELECT time_bucket('1 hour', eventtime) AS hour, count(*) as PageViews -> extra for timescale
-FROM hit
-WHERE eventtime > '2013-07-31 00:00:00'
-GROUP BY hour
-ORDER BY hour DESC;
-
-4: SELECT RegionID, , COUNT(*) AS PageViews FROM hits WHERE CounterID = 62 AND eventtime >= '2013-07-24' AND eventtime <= '2013-07-31' AND IsRefresh = 0 AND URL URL<> '' GROUP BY RegionID, URL ORDER BY PageViews DESC LIMIT 10;
-
-
-----------------------------------------
-
-
-We are using toast storage here and no compression is performed on the table.
+--We are using toast storage here and no compression is performed on the table.
 
 
 
@@ -364,35 +286,6 @@ ALTER TABLE hit_compressed_lz4 ALTER COLUMN URL SET STORAGE main;
 ALTER TABLE hit_compressed_lz4 ALTER COLUMN Title SET STORAGE main;
 ALTER TABLE hit_compressed_lz4 ALTER COLUMN Params SET STORAGE main;
 ALTER TABLE hit_compressed_lz4 ALTER COLUMN payload SET STORAGE main;
-
-
-
-create index idx_hit_compressed_eventtime on hit_compressed_lz4(eventtime DESC);
-CREATE INDEX idx_hit_compressed_regid  on hit_compressed_lz4 (RegionID);
-CREATE INDEX idx_hit_compressed_cid on hit_compressed_lz4 (counterid);
-CREATE INDEX idx_hit_compressed_refresh on hit_compressed_lz4 (isrefresh, dontcounthits) where isrefresh <> 0 and dontcounthit <> 0;
-CREATE INDEX idx_hit_compressed_userid on hit_compressed_lz4 (userid);
-CREATE INDEX idx_hit_compressed_regionuser on hit_compressed_lz4 (RegionID,UserID);
-CREATE INDEX idx_hit_compressed_search2 on hit_compressed_lz4 (searchphrase) WHERE searchphrase <> ''::text;
-CREATE INDEX idx_hit_compressed_trgm_idx_url ON hit_compressed_lz4 USING gin (url gin_trgm_ops);
-
-
-Analyze hit_compressed;
-
-
-
-postgres@ip-172-31-76-243:~$ psql -c '\timing' -c "COPY hit_compressed from '/home/postgres/hits.tsv'"
-Timing is on.
-COPY 99997497
-Time: 2827834.725 ms (47:07.835)
-
-    relname     | table_size | table_index_size | toast_relname  | toast_size | toast_index_size
-----------------+------------+------------------+----------------+------------+------------------
- hit_compressed | 65 GB      | 1548 MB          | pg_toast_16388 | 0 bytes    | 8192 bytes
-
-
-No toast space is used here.
-
 
 
 
@@ -540,17 +433,6 @@ ALTER TABLE hit_compressed_pglz ALTER COLUMN payload SET STORAGE main;
 
 
 
-create index idx_hit_compressed_eventtime on hit_compressed_lz4(eventtime DESC);
-CREATE INDEX idx_hit_compressed_regid  on hit_compressed_lz4 (RegionID);
-CREATE INDEX idx_hit_compressed_cid on hit_compressed_lz4 (counterid);
-CREATE INDEX idx_hit_compressed_refresh on hit_compressed_lz4 (isrefresh, dontcounthits) where isrefresh <> 0 and dontcounthit <> 0;
-CREATE INDEX idx_hit_compressed_userid on hit_compressed_lz4 (userid);
-CREATE INDEX idx_hit_compressed_regionuser on hit_compressed_lz4 (RegionID,UserID);
-CREATE INDEX idx_hit_compressed_search2 on hit_compressed_lz4 (searchphrase) WHERE searchphrase <> ''::text;
-CREATE INDEX idx_hit_compressed_trgm_idx_url ON hit_compressed_lz4 USING gin (url gin_trgm_ops);
-
-
-
 drop table hit_hyper_compressed;
 CREATE TABLE hit_hyper_compressed
 (
@@ -662,6 +544,10 @@ CREATE TABLE hit_hyper_compressed
 	payload jsonb COMPRESSION LZ4 NOT NULL
 );
 
+
+SELECT create_hypertable('hit_hyper_compressed', 'eventtime', chunk_time_interval => INTERVAL '1 day');
+
+
 ALTER TABLE hit_hyper_compressed ALTER COLUMN FromTag SET STORAGE main;
 ALTER TABLE hit_hyper_compressed ALTER COLUMN UTMTerm SET STORAGE main;
 ALTER TABLE hit_hyper_compressed ALTER COLUMN UTMContent SET STORAGE main;
@@ -691,158 +577,3 @@ ALTER TABLE hit_hyper_compressed ALTER COLUMN URL SET STORAGE main;
 ALTER TABLE hit_hyper_compressed ALTER COLUMN Title SET STORAGE main;
 ALTER TABLE hit_hyper_compressed ALTER COLUMN Params SET STORAGE main;
 ALTER TABLE hit_hyper_compressed ALTER COLUMN Payload SET STORAGE main;
-
-
-
-
-
-SELECT create_hypertable('hit_hyper_compressed', 'eventtime', chunk_time_interval => INTERVAL '1 day');
-After inserting data, check chunks with their sizes:
-
-
-select * from chunks_detailed_size('hit_hyper_uncompressed');
-
-select 	chunk_schema,
-		chunk_name,
-		pg_size_pretty(sum(table_bytes)) as table_size,
-		pg_size_pretty(sum(index_bytes)) as index_size,
-		pg_size_pretty(sum(toast_bytes)) as toast_size,
-		pg_size_pretty(sum(total_bytes)) as total_size
-from	
-chunks_detailed_size('hit_hyper_compressed');
-
-
-ALTER TABLE hit_hyper_compressed SET (timescaledb.compress, timescaledb.compress_orderby = 'counterid, eventdate, userid, eventtime')
-SELECT add_compression_policy('hits', INTERVAL '3d')hit_hyper_uncompressed
-
-SELECT compress_chunk(i, if_not_compressed => true)
-    FROM show_chunks(
-        'hit_hyper_compressed',
-        2013-08-01 00:00:00,
-        2013-07-01 00:00:00
-    ) i;
-
-
-View current compression policy
-
-To view the compression policy that you've set:
-
-SELECT * FROM timescaledb_information.jobs
-  WHERE proc_name='policy_compression';
-
-
-psql:index.sql:26: ERROR:  index row size 2904 exceeds btree version 4 maximum 2704 for index "idx_hit_compressed_url"
-
-
-
-For more information, see the API reference for timescaledb_information.jobs.
-
-
-
-
-
-The policy runs after 2
-
-We are compressing data older than 3 days.
-
-SELECT compress_chunk(i, if_not_compressed => true)
-    FROM show_chunks(
-        'hit_hyper_compressed',
-        2013-07-29 00:00:00,
-        2013-07-01 00:00:00
-    ) i;
-
-
-
-verify compression:
-
-SELECT show_chunks('example', older_than => INTERVAL '3 days');
-
-
-CREATE INDEX idx_hit_hyper_compressed_regid  on hit_hyper_compressed (RegionID);
-CREATE INDEX idx_hit_hyper_compressed_cid on hit_hyper_compressed (counterid);
-CREATE INDEX idx_hit_hyper_compressed_refresh on hit_hyper_compressed (isrefresh, dontcounthits) where isrefresh <> 0 and dontcounthit <> 0;
-CREATE INDEX idx_hit_hyper_compressed_userid on hit_hyper_compressed (userid);
-CREATE INDEX idx_hit_hyper_compressed_regionuser on hit_hyper_compressed (RegionID,UserID);
-CREATE INDEX idx_hit_hyper_compressed_search2 on hit_hyper_compressed (searchphrase) WHERE searchphrase <> ''::text;
-CREATE INDEX idx_hit_hyper_compressed_url on hit_hyper_compressed (url) WHERE url <> ''::text;
-CREATE INDEX idx_hit_hyper_compressed_trgm_idx_url ON hit_hyper_compressed USING gin (url gin_trgm_ops);
-
-
-
-
-ALTER TABLE test_main ALTER COLUMN FromTag SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN UTMTerm SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN UTMContent SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN UTMCampaign SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN UTMMedium SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN UTMSource SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN OpenstatSourceID SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN OpenstatAdID SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN OpenstatCampaignID SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN OpenstatServiceName SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN ParamCurrency SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN ParamOrderID SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN SocialSourcePage SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN SocialAction SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN SocialNetwork SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN BrowserCountry SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN BrowserLanguage SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN HitColor SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN OriginalURL SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN PageCharset SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN SearchPhrase SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN MobilePhoneModel SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN UserAgentMinor SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN FlashMinor2 SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN Referer SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN URL SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN Title SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN Params SET STORAGE main;
-ALTER TABLE test_main ALTER COLUMN payload SET STORAGE main;
-
-
-
-ALTER TABLE test_external ALTER COLUMN FromTag SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN UTMTerm SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN UTMContent SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN UTMCampaign SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN UTMMedium SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN UTMSource SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN OpenstatSourceID SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN OpenstatAdID SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN OpenstatCampaignID SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN OpenstatServiceName SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN ParamCurrency SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN ParamOrderID SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN SocialSourcePage SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN SocialAction SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN SocialNetwork SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN BrowserCountry SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN BrowserLanguage SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN HitColor SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN OriginalURL SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN PageCharset SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN SearchPhrase SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN MobilePhoneModel SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN UserAgentMinor SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN FlashMinor2 SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN Referer SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN URL SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN Title SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN Params SET STORAGE external;
-ALTER TABLE test_external ALTER COLUMN payload SET STORAGE external;
-
-
-
-
-Helper function for generating random jsonb string
-
-drop function create_jsonb_random();
-CREATE OR REPLACE FUNCTION create_jsonb_random() 
-RETURNS json AS
-$$
-BEGIN
- RETURN json_build_object('payload', gen) from repeat('a', pow(4,floor(random() * 20 + 1))::int) gen;
-END;
-$$ LANGUAGE plpgsql;
